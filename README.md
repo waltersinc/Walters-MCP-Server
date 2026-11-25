@@ -116,13 +116,18 @@ that container not running, or a firewall) - not the MCP code. `docker compose l
 
 ## Connecting to Microsoft Copilot
 
-> **Status: not yet verified end to end.** The server itself was tested against the live DataWarehouse, but the
-> Copilot-side wiring below has not been exercised. Microsoft's current MCP documentation
+> **Verified (2026-11-25):** a custom connector imported from `copilot/walters-mcp.swagger.yaml`, with **Connect via
+> on-premises data gateway** enabled and **Basic authentication**, successfully ran `tools/call` (`get_project_tonnage`)
+> from the connector's Test tab against this container running on the Ubuntu Docker host, returning live DataWarehouse
+> data (connector -> gateway -> this server -> DataWarehouse-API -> SQL Server).
+>
+> **Not yet verified:** driving the tools from a Copilot Studio agent (tool discovery and orchestration).
+>
+> Microsoft's MCP documentation
 > ([Connect to an existing MCP server](https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-add-existing-server-to-agent))
-> says nothing about routing an MCP connector through the **on-premises data gateway**, and its authentication
-> options for the guided MCP wizard are None / API key / OAuth 2.0 (no Basic). The steps below are the best
-> reading of the documented path plus what is known about gateway-routed custom connectors (Basic/Windows/None only).
-> Treat "does the gateway carry Streamable HTTP MCP traffic?" as the first thing to test.
+> is silent on the on-premises data gateway, and its guided MCP wizard lists only None / API key / OAuth 2.0 auth, so this
+> gateway + Basic setup works in practice but is not something the documentation promises. Re-test after Microsoft
+> changes connector or gateway behaviour.
 
 1. Edit `copilot/walters-mcp.swagger.yaml`: set `host` to the address the connector will call (for the gateway path,
    the internal host and port, e.g. `wincdocker:8081`).
