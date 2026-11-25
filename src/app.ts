@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import type { Express, Request, Response } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 import { basicAuth } from "./auth.js";
 import type { Config } from "./config.js";
 import { DwApiClient } from "./dwApi.js";
@@ -63,7 +63,27 @@ export function createApp(config: Config, deps: AppDeps = {}): Express {
   // Streamable HTTP, stateless: a fresh server+transport per request. No session state to
   // lose across restarts, and it works cleanly through proxies/gateways. JSON responses
   // (rather than SSE streams) keep it friendly to intermediaries.
-  app.post("/mcp", auth, async (req: Request, res: Response) => {
+  //
+  // The SDK rejects POSTs whose Accept header lacks BOTH application/json and text/event-stream
+  // (HTTP 406). Power Platform's connector test tool sends neither, and since this server only ever
+  // answers with plain JSON, insisting on it buys nothing - so the header is normalised first.
+  const acceptJsonAndSse = (req: Request, _res: Response, next: NextFunction): void => {
+    const value = "application/json, text/event-stream";
+    req.headers.accept = value;
+    // Some transports build the Web Request from rawHeaders, so keep those in step too.
+    const raw = req.rawHeaders;
+    let replaced = false;
+    for (let i = 0; i < raw.length; i += 2) {
+      if (raw[i]!.toLowerCase() === "accept") {
+        raw[i + 1] = value;
+        replaced = true;
+      }
+    }
+    if (!replaced) raw.push("Accept", value);
+    next();
+  };
+
+  app.post("/mcp", auth, acceptJsonAndSse, async (req: Request, res: Response) => {
     const server = buildMcpServer(api, timeZone);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

@@ -136,6 +136,18 @@ that container not running, or a firewall) - not the MCP code. `docker compose l
 5. Create the connector, then in Copilot Studio add it to your agent as a tool (**Add a tool -> Connector**). Review the
    12 tools it exposes.
 
+**Testing in the connector's Test tab.** The tab lists two operations. `InvokeMCP` (POST) is the real one; the generated
+`GetInvokeMCP` (GET) is expected to answer `405 Method not allowed`, because this server is stateless and offers no
+server-push stream (the MCP spec allows that). A 405 there still proves the connector reached the server and
+authenticated. For `InvokeMCP`, leave `Mcp-Session-Id` blank (sessions aren't used), switch **Raw Body** on, and paste a
+full JSON-RPC message, for example:
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_project_tonnage","arguments":{"project":"DF-833"}}}
+```
+
+(The `Accept` header the tab sends is tolerated: the server always answers with plain JSON.)
+
 Things that may need a different approach, in order of likelihood:
 
 - **The sample in Microsoft's docs uses `schemes: [https]`.** This container serves plain HTTP. If the connector or

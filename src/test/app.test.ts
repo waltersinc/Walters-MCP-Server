@@ -137,6 +137,46 @@ test("/health needs no auth and /ready reflects the DataWarehouse-API", async ()
   assert.equal(ready.status, 200);
 });
 
+test("POSTs work with the Accept headers connector tooling actually sends", async () => {
+  // Power Platform's connector test tool does not send 'application/json, text/event-stream'.
+  for (const accept of ["application/json", "*/*", "application/json, text/event-stream"]) {
+    const res = await fetch(mcpUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: accept, Authorization: basic(MCP_USER, MCP_PASS) },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "get_tag_hours", arguments: { tagId: "2010197" } },
+      }),
+    });
+    assert.equal(res.status, 200, `Accept '${accept}' should be accepted`);
+    assert.match(res.headers.get("content-type") ?? "", /application\/json/);
+    const body = (await res.json()) as { result: { content: { text: string }[] } };
+    assert.equal(JSON.parse(body.result.content[0]!.text).totalHours, 12.51);
+  }
+});
+
+test("a POST with no Accept header at all is also accepted", async () => {
+  const { request } = await import("node:http");
+  const status = await new Promise<number>((resolve, reject) => {
+    const req = request(
+      mcpUrl,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: basic(MCP_USER, MCP_PASS) },
+      },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      },
+    );
+    req.on("error", reject);
+    req.end(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }));
+  });
+  assert.equal(status, 200);
+});
+
 test("GET /mcp is not allowed in stateless mode", async () => {
   const res = await fetch(mcpUrl, { headers: { Authorization: basic(MCP_USER, MCP_PASS) } });
   assert.equal(res.status, 405);
