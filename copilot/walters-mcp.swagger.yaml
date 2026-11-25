@@ -1,0 +1,38 @@
+# OpenAPI (Swagger 2.0) definition to import as a Power Platform custom connector so that
+# Copilot Studio can use this MCP server. Shape follows Microsoft's documented sample for a
+# Streamable-HTTP MCP server (Copilot Studio: "Connect to an existing MCP server"):
+# a single POST operation with x-ms-agentic-protocol: mcp-streamable-1.0.
+#
+# BEFORE IMPORTING: replace `host` with the address the connector will call.
+#   - Via the on-premises data gateway: the internal hostname/IP and port of the Docker host,
+#     e.g. wincdocker:8081  (see README "Connecting to Microsoft Copilot" for the caveats).
+#   - Via a public/relay endpoint: that endpoint's host name.
+swagger: '2.0'
+info:
+  title: Walters DataWarehouse MCP
+  description: >-
+    Read-only questions about Walters fabrication operations: labour hours by tag, workorder and
+    employee, plant headcount, active projects, tonnage, purchase orders (count and overdue),
+    WorkOrder completion percentage, and WorkOrder material availability.
+  version: 1.0.0
+host: REPLACE-WITH-HOST:8081
+basePath: /
+schemes:
+  - https
+paths:
+  /mcp:
+    post:
+      summary: Walters DataWarehouse MCP server
+      x-ms-agentic-protocol: mcp-streamable-1.0
+      operationId: InvokeMCP
+      responses:
+        '200':
+          description: Success
+# Microsoft's sample has no security section. This server requires HTTP Basic authentication, so
+# it is declared here; if the import ignores it, select "Basic authentication" on the custom
+# connector's Security tab instead.
+securityDefinitions:
+  basic_auth:
+    type: basic
+security:
+  - basic_auth: []
